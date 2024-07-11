@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Router Signal Strength Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+        }
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+        }
+        .chart-box {
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        #interval-control {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Router Signal Strength Monitor</h1>
+    <div id="interval-control">
+        <label for="interval">Update interval (ms): </label>
+        <input type="number" id="interval" value="2000" min="1000" step="1000">
+        <button onclick="updateInterval()">Set</button>
+    </div>
+    <div class="chart-container">
+        <div class="chart-box">
+            <canvas id="rssiChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="rsrpChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="rsrqChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="snrChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let intervalId;
+        const maxDataPoints = 50;
+        const charts = {};
+        const chartData = {
+            rssi: { values: [], label: 'RSSI', unit: 'dBm', min: -100, max: -20 },
+            rsrp: { values: [], label: 'RSRP', unit: 'dBm', min: -140, max: -40 },
+            rsrq: { values: [], label: 'RSRQ', unit: 'dB', min: -20, max: 0 },
+            snr: { values: [], label: 'SNR', unit: 'dB', min: 0, max: 30 }
+        };
+
+        function initCharts() {
+            const commonOptions = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#ffffff' }
+                        }
+                    },
+                    elements: {
+                        line: { tension: 0.4, borderWidth: 2 },
+                        point: { radius: 0 }
+                    }
+                }
+            };
+
+            for (const [key, data] of Object.entries(chartData)) {
+                const ctx = document.getElementById(`${key}Chart`).getContext('2d');
+                charts[key] = new Chart(ctx, {
+                    ...commonOptions,
+                    data: {
+                        labels: Array(maxDataPoints).fill(''),
+                        datasets: [{
+                            data: data.values,
+                            borderColor: '#4dff4d',
+                            backgroundColor: 'rgba(77, 255, 77, 0.2)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        ...commonOptions.options,
+                        scales: {
+                            ...commonOptions.options.scales,
+                            y: {
+                                ...commonOptions.options.scales.y,
+                                min: data.min,
+                                max: data.max
+                            }
+                        },
+                        plugins: {
+                            ...commonOptions.options.plugins,
+                            title: {
+                                display: true,
+                                text: `${data.label}: -- ${data.unit}`,
+                                color: '#ffffff',
+                                font: { size: 16, weight: 'bold' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateCharts(newData) {
+            for (const [key, data] of Object.entries(chartData)) {
+                data.values.push(newData[key]);
+                if (data.values.length > maxDataPoints) {
+                    data.values.shift();
+                }
+                charts[key].data.datasets[0].data = data.values;
+                charts[key].options.plugins.title.text = `${data.label}: ${newData[key]} ${data.unit}`;
+                charts[key].update();
+            }
+        }
+
+        function fetchData() {
+            // Simulating data fetch. Replace this with your actual fetch logic.
+            const mockData = {
+                rssi: -55 + Math.random() * 10 - 5,
+                rsrp: -83 + Math.random() * 10 - 5,
+                rsrq: -8 + Math.random() * 4 - 2,
+                snr: 12 + Math.random() * 6 - 3
+            };
+            updateCharts(mockData);
+        }
+
+        function updateInterval() {
+            const interval = document.getElementById('interval').value;
+            clearInterval(intervalId);
+            intervalId = setInterval(fetchData, interval);
+        }
+
+        initCharts();
+        fetchData();
+        intervalId = setInterval(fetchData, 2000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Router Signal Strength Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metric {
+            margin-bottom: 10px;
+        }
+        .bar {
+            height: 20px;
+            width: 200px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+        }
+        #chart-container {
+            width: 80%;
+            max-width: 800px;
+        }
+        .chart-box {
+            background-color: #1e1e1e;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .chart-title {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        .chart-value {
+            font-size: 1.5em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Router Signal Strength</h2>
+        <div class="metric">
+            <label>RSRP: <span id="rsrp-value"></span> dBm</label>
+            <div class="bar"><div id="rsrp-bar" class="fill"></div></div>
+        </div>
+        <div class="metric">
+            <label>RSSI: <span id="rssi-value"></span> dBm</label>
+            <div class="bar"><div id="rssi-bar" class="fill"></div></div>
+        </div>
+        <div class="metric">
+            <label>RSRQ: <span id="rsrq-value"></span> dB</label>
+            <div class="bar"><div id="rsrq-bar" class="fill"></div></div>
+        </div>
+        <div class="metric">
+            <label>SINR: <span id="sinr-value"></span> dB</label>
+            <div class="bar"><div id="sinr-bar" class="fill"></div></div>
+        </div>
+        <div>
+            <label for="interval">Update interval (ms): </label>
+            <input type="number" id="interval" value="2000" min="1000" step="1000">
+            <button onclick="updateInterval()">Set</button>
+        </div>
+        <div>
+            <input type="checkbox" id="show-chart" onchange="toggleChart()">
+            <label for="show-chart">Show Chart</label>
+        </div>
+    </div>
+    <div id="chart-container" style="display: none;">
+        <div class="chart-box">
+            <div class="chart-title">RSRP</div>
+            <canvas id="rsrpChart"></canvas>
+            <div class="chart-value" id="rsrp-current"></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title">RSSI</div>
+            <canvas id="rssiChart"></canvas>
+            <div class="chart-value" id="rssi-current"></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title">RSRQ</div>
+            <canvas id="rsrqChart"></canvas>
+            <div class="chart-value" id="rsrq-current"></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title">SINR</div>
+            <canvas id="sinrChart"></canvas>
+            <div class="chart-value" id="sinr-current"></div>
+        </div>
+    </div>
+
+    <script>
+        let intervalId;
+        let rsrpChart, rssiChart, rsrqChart, sinrChart;
+        const chartData = {
+            rsrp: { labels: [], data: [] },
+            rssi: { labels: [], data: [] },
+            rsrq: { labels: [], data: [] },
+            sinr: { labels: [], data: [] }
+        };
+
+        function updateSignalStrength() {
+            fetch("http://192.168.1.1/cgi-bin/lua.cgi", {
+                "headers": {
+                    "accept": "text/plain, */*; q=0.01",
+                    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8,si;q=0.7",
+                    "content-type": "application/json; charset=UTF-8",
+                    "x-requested-with": "XMLHttpRequest"
+                },
+                "referrer": "http://192.168.1.1/login.html?_t=1869764",
+                "referrerPolicy": "strict-origin-when-cross-origin",
+                "body": "{\"cmd\":250,\"method\":\"GET\",\"sessionId\":\"\"}",
+                "method": "POST",
+                "mode": "cors",
+                "credentials": "omit"
+            })
+            .then(response => response.json())
+            .then(data => {
+                const mainInfo = data.data.main_info;
+                updateMetric('rsrp', mainInfo.modem_rsrp, -140, -70);
+                updateMetric('rssi', mainInfo.modem_rssi, -100, -50);
+                updateMetric('rsrq', mainInfo.modem_rsrq, -20, 0);
+                updateMetric('sinr', mainInfo.modem_sinr, 0, 30);
+                updateChart(mainInfo);
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function updateMetric(name, value, min, max) {
+            const element = document.getElementById(`${name}-value`);
+            const bar = document.getElementById(`${name}-bar`);
+            element.textContent = value;
+            const percentage = (value - min) / (max - min) * 100;
+            bar.style.width = `${percentage}%`;
+            bar.style.backgroundColor = getColor(percentage);
+            document.getElementById(`${name}-current`).textContent = value;
+        }
+
+        function getColor(percentage) {
+            if (percentage < 25) return '#ff4d4d';
+            if (percentage < 50) return '#ffa64d';
+            if (percentage < 75) return '#ffff4d';
+            return '#4dff4d';
+        }
+
+        function updateInterval() {
+            const interval = document.getElementById('interval').value;
+            clearInterval(intervalId);
+            intervalId = setInterval(updateSignalStrength, interval);
+        }
+
+        function toggleChart() {
+            const chartContainer = document.getElementById('chart-container');
+            const showChart = document.getElementById('show-chart').checked;
+            chartContainer.style.display = showChart ? 'block' : 'none';
+            if (showChart && !rsrpChart) {
+                initCharts();
+            }
+        }
+
+        function initCharts() {
+            const rsrpCtx = document.getElementById('rsrpChart').getContext('2d');
+            const rssiCtx = document.getElementById('rssiChart').getContext('2d');
+            const rsrqCtx = document.getElementById('rsrqChart').getContext('2d');
+            const sinrCtx = document.getElementById('sinrChart').getContext('2d');
+
+            rsrpChart = createChart(rsrpCtx, 'RSRP', chartData.rsrp.data);
+            rssiChart = createChart(rssiCtx, 'RSSI', chartData.rssi.data);
+            rsrqChart = createChart(rsrqCtx, 'RSRQ', chartData.rsrq.data);
+            sinrChart = createChart(sinrCtx, 'SINR', chartData.sinr.data);
+        }
+
+        function createChart(ctx, label, data) {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.rsrp.labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'second'
+                            },
+                            ticks: {
+                                color: 'white'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: 'white'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart(mainInfo) {
+            if (!rsrpChart) return;
+
+            const now = new Date();
+            chartData.rsrp.labels.push(now);
+            chartData.rsrp.data.push(mainInfo.modem_rsrp);
+            chartData.rssi.labels.push(now);
+            chartData.rssi.data.push(mainInfo.modem_rssi);
+            chartData.rsrq.labels.push(now);
+            chartData.rsrq.data.push(mainInfo.modem_rsrq);
+            chartData.sinr.labels.push(now);
+            chartData.sinr.data.push(mainInfo.modem_sinr);
+
+            if (chartData.rsrp.labels.length > 50) {
+                chartData.rsrp.labels.shift();
+                chartData.rsrp.data.shift();
+                chartData.rssi.labels.shift();
+                chartData.rssi.data.shift();
+                chartData.rsrq.labels.shift();
+                chartData.rsrq.data.shift();
+                chartData.sinr.labels.shift();
+                chartData.sinr.data.shift();
+            }
+
+            rsrpChart.update();
+            rssiChart.update();
+            rsrqChart.update();
+            sinrChart.update();
+        }
+
+        updateSignalStrength();
+        intervalId = setInterval(updateSignalStrength, 2000);
+    </script>
+</body>
+</html>
