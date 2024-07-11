@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Router Signal Strength Monitor</title>
+    <title>Mobitel ZLT S12 Pro Router Signal Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -33,7 +33,7 @@
     </style>
 </head>
 <body>
-    <h1>Router Signal Strength Monitor</h1>
+    <h1>Mobitel ZLT S12 Pro Router Signal Monitor</h1>
     <div id="interval-control">
         <label for="interval">Update interval (ms): </label>
         <input type="number" id="interval" value="2000" min="1000" step="1000">
@@ -140,14 +140,32 @@
         }
 
         function fetchData() {
-            // Simulating data fetch. Replace this with your actual fetch logic.
-            const mockData = {
-                rssi: -55 + Math.random() * 10 - 5,
-                rsrp: -83 + Math.random() * 10 - 5,
-                rsrq: -8 + Math.random() * 4 - 2,
-                snr: 12 + Math.random() * 6 - 3
-            };
-            updateCharts(mockData);
+            fetch("http://192.168.1.1/cgi-bin/lua.cgi", {
+                "headers": {
+                    "accept": "text/plain, */*; q=0.01",
+                    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8,si;q=0.7",
+                    "content-type": "application/json; charset=UTF-8",
+                    "x-requested-with": "XMLHttpRequest"
+                },
+                "referrer": "http://192.168.1.1/login.html?_t=1869764",
+                "referrerPolicy": "strict-origin-when-cross-origin",
+                "body": "{\"cmd\":250,\"method\":\"GET\",\"sessionId\":\"\"}",
+                "method": "POST",
+                "mode": "cors",
+                "credentials": "omit"
+            })
+            .then(response => response.json())
+            .then(data => {
+                const mainInfo = data.data.main_info;
+                const newData = {
+                    rssi: parseFloat(mainInfo.modem_rssi),
+                    rsrp: parseFloat(mainInfo.modem_rsrp),
+                    rsrq: parseFloat(mainInfo.modem_rsrq),
+                    snr: parseFloat(mainInfo.modem_sinr)
+                };
+                updateCharts(newData);
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         function updateInterval() {
