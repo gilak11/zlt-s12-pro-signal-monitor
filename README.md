@@ -24,7 +24,7 @@ This project provides a real-time visual monitor for the signal strength of your
 ### Installation
 
 1. Clone this repository or download the HTML file:
-git clone https://github.com/gilak11/mobitel-zlt-s12-pro-monitor.git
+git clone https://github.com/gilak11/zlt-s12-pro-signal-monitor.git
 Copy2. Navigate to the project directory:
 cd mobitel-zlt-s12-pro-monitor
 Copy
@@ -56,6 +56,7 @@ Copy
 ## 📸 Screenshot
 
 ![Router Signal Monitor Screenshot](screenshot.png)
+![Router Signal Monitor Screenshot](screenshot1.png)
 
 ## 🛠️ Customization
 
