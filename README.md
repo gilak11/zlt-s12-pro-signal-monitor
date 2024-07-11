@@ -40,15 +40,25 @@ To run this application, you need to start Chrome with web security disabled. Th
 
 3. Run the following command to start Chrome with web security disabled:
 
-For Windows:
+
+
+### For Windows:
+
+```batch
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="C:/ChromeDev" --disable-web-security
-Copy
-For macOS:
+```
+
+### For macOS:
+
+```bash
 open -n -a /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --args --user-data-dir="/tmp/chrome_dev_test" --disable-web-security
-Copy
-For Linux:
+```
+
+### For Linux:
+
+```bash
 google-chrome --user-data-dir="/tmp/chrome_dev_test" --disable-web-security
-Copy
+```
 4. In the Chrome window that opens, navigate to the `index.html` file in your project directory.
 
 5. The dashboard should now load and start displaying your router's signal metrics.
@@ -72,7 +82,7 @@ Contributions, issues, and feature requests are welcome! Feel free to check [iss
 
 ## 👨‍💻 Author
 
-**Your Name**
+
 
 - GitHub: [@gilak11](https://github.com/gilak11)
 
